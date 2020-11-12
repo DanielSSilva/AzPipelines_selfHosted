@@ -1,0 +1,86 @@
+- name: Download dependencies, agent and execute
+  hosts: all
+  remote_user: daniel
+  vars:
+    folderPath: "{{ansible_env.HOME}}/azagentScripts"
+    agentFolderPath: "{{ansible_env.HOME}}/azPipelineAgent"
+  environment:
+    PATH: "{{ansible_env.HOME}}/.dotnet:{{ansible_env.PATH}}"
+    DOTNET_ROOT: "{{ansible_env.HOME}}/.dotnet"
+    
+  tasks:  
+  - name: Install jq dependency
+    become: true
+    apt:
+      name: jq
+      state: present
+
+  - name: Create the folder that holds the scripts
+    file:
+      path: "{{ folderPath }}"
+      state: directory
+
+  - name: Create agent folder
+    file:
+      path: "{{ agentFolderPath }}"
+      state: directory
+
+  - name: Create agent azp folder
+    file:
+      path: "{{ agentFolderPath }}/azp"
+      state: directory
+  
+  - name: Copy the scripts
+    copy: 
+      src: "{{item}}"
+      dest: "{{ folderPath }}/"
+      mode: 0744
+    loop:
+      - ./constants.sh
+      - ./downloadAndInstallAgent.sh
+      - ./setup_dotnet.sh
+        
+  - name: Download and install the agent
+    command:
+      argv: 
+        - "{{ folderPath }}/downloadAndInstallAgent.sh"
+        - "{{ agentFolderPath }}"
+    args:
+      chdir: "{{ folderPath }}/"
+
+  - name: Install dotnet dependency
+    become: true
+    command: "{{ folderPath }}/setup_dotnet.sh"
+
+  - name: Add export PATH=$PATH:$HOME/.dotnet to bashrc
+    lineinfile:
+      dest: ~/.bashrc
+      line: "export PATH=$PATH:$HOME/.dotnet"
+  
+  - name: Add export DOTNET_ROOT=$HOME/.dotnet to bashrc
+    lineinfile:
+      dest: ~/.bashrc
+      line: "export DOTNET_ROOT=$HOME/.dotnet"
+
+  # - name: Force env variables to be read by agent
+  #   shell: "{{ agentFolderPath }}/agent/env.sh"
+  #   args:
+  #     chdir: "{{ agentFolderPath }}/agent/"
+
+  - name: Register the agent as a service
+    become: true
+    command:
+      argv: 
+        - "{{ agentFolderPath }}/agent/svc.sh"
+        - "install"
+    args:
+      chdir: "{{ agentFolderPath }}/agent/"
+
+  - name: Start the agent service
+    become: true
+    command:
+      argv: 
+        - "{{ agentFolderPath }}/agent/svc.sh"
+        - "start"
+    args:
+      chdir: "{{ agentFolderPath }}/agent/"

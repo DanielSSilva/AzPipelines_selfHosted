@@ -1,0 +1,47 @@
+- name: Clear environment
+  hosts: all
+  remote_user: daniel
+  vars:
+    folderPath: /home/daniel/azagentScripts
+    agentFolderPath: /home/daniel/azPipelineAgent
+    
+  tasks:  
+  
+  - name: stop the agent service
+    become: true
+    command:
+      argv: 
+        - "{{ agentFolderPath }}/agent/svc.sh"
+        - "stop"
+    args:
+      chdir: "{{ agentFolderPath }}/agent/"
+
+  - name: uninstall the agent service
+    become: true
+    command:
+      argv: 
+        - "{{ agentFolderPath }}/agent/svc.sh"
+        - "uninstall"
+    args:
+      chdir: "{{ agentFolderPath }}/agent/"
+
+  - name: Delete folders
+    command: rm -rf ~/az*
+     
+  - name: Delete dotnet
+    command: rm -rf ~/.dotnet
+  
+
+  - name: Delete exported 
+    command: sed -i '$ d' ~/.bashrc
+       
+  - name: Delete exported
+    command: sed -i '$ d' ~/.bashrc
+
+  - name: delete folderPath
+    command: rm -rf {{ folderPath }}
+
+  - name: delete agentFolderPath
+    command: rm -rf {{ agentFolderPath }}
+
+  
